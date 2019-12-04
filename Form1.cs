@@ -7,26 +7,32 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
     {
-        private delegate void SerialDataRecved(byte[] data);
+        private int m_x = 0;
+        private delegate void SerialDataRecved(List<WaveDecoder.DataType> dataList);
 
         public Form1()
         {
             InitializeComponent();
         }
 
-        private void OnDataRecved(byte[] data)
+        private void OnDataRecved(List<WaveDecoder.DataType> dataList)
         {
-            Console.WriteLine(data);
+            foreach(WaveDecoder.DataType data in dataList)
+            {
+                Console.WriteLine(data.value * 1000);
+                this.chart1.Series[0].Points.AddXY(m_x++, data.value * 1000);
+            }
         }
 
-        public void RecvData(byte[] data)
+        public void RecvData(List<WaveDecoder.DataType> dataList)
         {
-            this.BeginInvoke(new SerialDataRecved(OnDataRecved), data);
+            this.BeginInvoke(new SerialDataRecved(OnDataRecved), dataList);
         }
     }
 }
