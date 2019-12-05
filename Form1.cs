@@ -25,8 +25,8 @@ namespace WindowsFormsApp1
         {
             foreach(WaveDecoder.DataType data in dataList)
             {
-                Console.WriteLine(data.value * 1000);
-                this.chart1.Series[0].Points.AddXY(m_x++, data.value * 1000);
+                Console.WriteLine(data.data.value * 1000);
+                this.chart1.Series[0].Points.AddXY(m_x++, data.data.value * 1000);
             }
         }
 
