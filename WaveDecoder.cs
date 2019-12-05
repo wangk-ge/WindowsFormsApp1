@@ -34,7 +34,7 @@ namespace WindowsFormsApp1
             }
         }
 
-        public struct DataType
+        public struct WaveData
         {
             public DataMode mode;
             public byte channel;
@@ -142,7 +142,7 @@ namespace WindowsFormsApp1
         }
 
         // 接收一个点数据, 仅仅是数据
-        private Result ParsePointData(ref DataType data, byte bData)
+        private Result ParsePointData(ref WaveData data, byte bData)
         {
             if (m_dataCount == 0)
             { // 第一个字节是数据类型和通道信息
@@ -175,7 +175,7 @@ namespace WindowsFormsApp1
         }
 
         // 转换时间戳
-        private void ParseTimeStamp(ref DataType data, byte[] buffer)
+        private void ParseTimeStamp(ref WaveData data, byte[] buffer)
         {
             ref TimeStamp ts = ref data.data.ts;
 
@@ -192,7 +192,7 @@ namespace WindowsFormsApp1
         }
 
         /* 逐字节输入数据进行解码 */
-        private bool FrameDecodeInput(ref DataType tData, byte byteData)
+        private bool FrameDecodeInput(ref WaveData tData, byte byteData)
         {
             Result res = Result.Ok;
 
@@ -281,10 +281,10 @@ namespace WindowsFormsApp1
         }
 
         /* 解码字节流,返回解码结果 */
-        public List<DataType> FrameDecode(byte[] byteArray)
+        public List<WaveData> FrameDecode(byte[] byteArray)
         {
-            DataType data = new DataType();
-            List<DataType> list = new List<DataType>();
+            WaveData data = new WaveData();
+            List<WaveData> list = new List<WaveData>();
 
             foreach (byte bData in byteArray)
             {
@@ -340,9 +340,9 @@ namespace WindowsFormsApp1
                 0xa3,0xaa,0x27,0x85,0x5c,0x8a,0x19,0x00,0x00,0x96, /* 19-12-05 11:36:20: 0200 0150 */
             };
 
-            List<DataType> list = FrameDecode(frame);
+            List<WaveData> list = FrameDecode(frame);
 
-            foreach(DataType data in list)
+            foreach(WaveData data in list)
             {
                 Console.WriteLine(data);
             }

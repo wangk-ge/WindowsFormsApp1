@@ -73,7 +73,7 @@ namespace WindowsFormsApp1
             int dataLen = sp.BytesToRead;
             byte[] dataBuf = new byte[dataLen];
             sp.Read(dataBuf, 0, dataLen);
-            List<WaveDecoder.DataType> dataList = m_waveDecoder.FrameDecode(dataBuf);
+            List<WaveDecoder.WaveData> dataList = m_waveDecoder.FrameDecode(dataBuf);
             m_mainForm.RecvData(dataList);
         }
     }
