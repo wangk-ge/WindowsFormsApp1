@@ -26,13 +26,6 @@ namespace WindowsFormsApp1
                 Console.WriteLine($"WaveDataRespRecved: {channel} {value}");
                 this.BeginInvoke(new WaveDataRecved(OnWaveDataRecved), channel, value);
             });
-            m_flowSensor.m_frameDecoder.CmdRespRecved += new FrameDecoder.CmdRespRecvHandler((string cmdResp) => {
-                Console.WriteLine($"CmdRespRecved: {cmdResp}");
-                this.BeginInvoke(new CmdRespRecved(OnCmdRespRecved), cmdResp);
-            });
-            m_flowSensor.m_frameDecoder.TimeStampRespRecved += new FrameDecoder.TimeStampRecvHandler((FrameDecoder.TimeStamp timeStamp) => {
-                Console.WriteLine($"TimeStampRespRecved: {timeStamp}");
-            });
 
             m_flowSensor.Open("COM4");
         }
@@ -42,14 +35,11 @@ namespace WindowsFormsApp1
             this.chart1.Series[0].Points.AddXY(m_x++, value * 1000);
         }
 
-        private void OnCmdRespRecved(string cmdResp)
+        private async void sendCmdButton_Click(object sender, EventArgs e)
         {
+            string cmdResp = await m_flowSensor.ExcuteCmdAsync(this.cmdTextBox.Text, 2000);
+            //string cmdResp = m_flowSensor.ExcuteCmd(this.cmdTextBox.Text, 2000);
             this.cmdRespTextBox.AppendText($"Revc: {cmdResp} \r\n");
-        }
-
-        private void sendCmdButton_Click(object sender, EventArgs e)
-        {
-            m_flowSensor.ExcuteCmd(this.cmdTextBox.Text);
         }
 
         private void Form1_Load(object sender, EventArgs e)

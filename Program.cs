@@ -30,6 +30,7 @@ namespace WindowsFormsApp1
         private SerialPort m_serialPort = null;
 
         public FrameDecoder m_frameDecoder = new FrameDecoder();
+        private Queue<TaskCompletionSource<string>> m_cmdRespTaskCompQue = new Queue<TaskCompletionSource<string>>();
 
         public FlowSensor()
         {
@@ -49,6 +50,16 @@ namespace WindowsFormsApp1
 
             m_serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
 
+            m_frameDecoder.CmdRespRecved += new FrameDecoder.CmdRespRecvHandler((string cmdResp) => {
+                Console.WriteLine($"CmdRespRecved: {cmdResp}");
+                TaskCompletionSource<string> taskComp = null;
+                lock (m_cmdRespTaskCompQue)
+                {
+                    taskComp = m_cmdRespTaskCompQue.Dequeue();
+                }
+                taskComp.SetResult(cmdResp);
+            });
+
             m_serialPort.Open();
         }
 
@@ -58,9 +69,55 @@ namespace WindowsFormsApp1
             m_serialPort = null;
         }
 
-        public void ExcuteCmd(string cmd)
+        private Task<string> ExcuteCmdTask(string cmd)
         {
+            var cmdRespTaskComp = new TaskCompletionSource<string>();
+            lock (m_cmdRespTaskCompQue)
+            {
+                m_cmdRespTaskCompQue.Enqueue(cmdRespTaskComp);
+            }
+
             m_serialPort.Write(cmd);
+
+            var task = cmdRespTaskComp.Task;
+            return task;
+        }
+
+        /* 执行命令(异步版本) */
+        public async Task<string> ExcuteCmdAsync(string cmd, int timeOut)
+        {
+            var cmdTask = ExcuteCmdTask(cmd);
+            var task = await Task.WhenAny(cmdTask, Task.Delay(timeOut));
+            if (task == cmdTask)
+            { // 成功
+                return cmdTask.Result;
+            }
+
+            // 超时
+            lock (m_cmdRespTaskCompQue)
+            {
+                m_cmdRespTaskCompQue.Dequeue();
+            }
+            return "";
+        }
+
+        /* 执行命令(同步版本) */
+        public string ExcuteCmd(string cmd, int timeOut)
+        {
+            var cmdTask = ExcuteCmdTask(cmd);
+            var compTask = Task.WhenAny(cmdTask, Task.Delay(timeOut));
+            var task = compTask.Result;
+            if (task == cmdTask)
+            {
+                return cmdTask.Result;
+            }
+
+            // 超时
+            lock (m_cmdRespTaskCompQue)
+            {
+                m_cmdRespTaskCompQue.Dequeue();
+            }
+            return "";
         }
 
         private void DataReceivedHandler(
