@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.IO.Ports;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 
 namespace WindowsFormsApp1
 {
@@ -21,6 +22,10 @@ namespace WindowsFormsApp1
             Application.SetCompatibleTextRenderingDefault(false);
             Form1 mainForm = new Form1();
             Application.Run(mainForm);
+
+            //string ver = Regex.Replace("[VER=H1.0.0S1.0.0]", @"(\[VER=)(.*)(\])", "$2");
+            //Console.WriteLine(ver);
+            //Console.ReadLine();
         }
     }
 
@@ -52,12 +57,16 @@ namespace WindowsFormsApp1
 
             m_frameDecoder.CmdRespRecved += new FrameDecoder.CmdRespRecvHandler((string cmdResp) => {
                 Console.WriteLine($"CmdRespRecved: {cmdResp}");
-                TaskCompletionSource<string> taskComp = null;
-                lock (m_cmdRespTaskCompQue)
+                if (m_cmdRespTaskCompQue.Count > 0)
                 {
-                    taskComp = m_cmdRespTaskCompQue.Dequeue();
+                    /* 通知CMD Task执行结果 */
+                    TaskCompletionSource<string> taskComp = null;
+                    lock (m_cmdRespTaskCompQue)
+                    {
+                        taskComp = m_cmdRespTaskCompQue.Dequeue();
+                    }
+                    taskComp?.SetResult(cmdResp);
                 }
-                taskComp.SetResult(cmdResp);
             });
 
             m_serialPort.Open();
@@ -69,16 +78,20 @@ namespace WindowsFormsApp1
             m_serialPort = null;
         }
 
+        /* 创建CMD Task */
         private Task<string> ExcuteCmdTask(string cmd)
         {
+            /* 将CMD Task记录到完成队列 */
             var cmdRespTaskComp = new TaskCompletionSource<string>();
             lock (m_cmdRespTaskCompQue)
             {
                 m_cmdRespTaskCompQue.Enqueue(cmdRespTaskComp);
             }
 
+            /* 发送CMD */
             m_serialPort.Write(cmd);
 
+            /* 返回Task */
             var task = cmdRespTaskComp.Task;
             return task;
         }
@@ -86,38 +99,48 @@ namespace WindowsFormsApp1
         /* 执行命令(异步版本) */
         public async Task<string> ExcuteCmdAsync(string cmd, int timeOut)
         {
+            /* 创建CMD Task */
             var cmdTask = ExcuteCmdTask(cmd);
+
+            /* 异步等待执行完毕或超时 */
             var task = await Task.WhenAny(cmdTask, Task.Delay(timeOut));
             if (task == cmdTask)
-            { // 成功
+            { // CMD Task执行完毕
                 return cmdTask.Result;
             }
 
-            // 超时
+            /* 超时 */
             lock (m_cmdRespTaskCompQue)
             {
+                /* 删除完成队列中的记录 */
                 m_cmdRespTaskCompQue.Dequeue();
             }
-            return "";
+
+            return string.Empty;
         }
 
         /* 执行命令(同步版本) */
         public string ExcuteCmd(string cmd, int timeOut)
         {
+            /* 创建CMD Task */
             var cmdTask = ExcuteCmdTask(cmd);
+
+            /* 同步等待执行完毕或超时 */
             var compTask = Task.WhenAny(cmdTask, Task.Delay(timeOut));
             var task = compTask.Result;
             if (task == cmdTask)
-            {
+            { // CMD Task执行完毕
                 return cmdTask.Result;
             }
 
-            // 超时
+            /* 超时 */
             lock (m_cmdRespTaskCompQue)
             {
+                /* 删除完成队列中的记录 */
                 m_cmdRespTaskCompQue.Dequeue();
             }
-            return "";
+
+            return string.Empty;
         }
 
         private void DataReceivedHandler(
